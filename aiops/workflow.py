@@ -1,4 +1,6 @@
+import asyncio
 import json
+import subprocess
 import threading
 import time
 import uuid
@@ -8,12 +10,52 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from .agents import DiagnosisAgent,RepairAgent
 from .memory import memory_server
 from .policy import PreToolUse
-from .tools import DiagnosticTools,command
+from .tools import DiagnosticTools,command,fetch_observation,validate_observation_url
 
 
 class Workflow:
     def __init__(self,settings,model,memory):
         self.settings,self.model,self.memory=settings,model,memory
+
+    async def verify_recovery(self,alert,service,hook,emit):
+        start=time.monotonic()
+        deadline=start+self.settings.recovery_timeout_seconds
+        prefix=[self.settings.kubectl,'--context',self.settings.kube_context,
+                '--namespace',self.settings.kube_namespace,'--request-timeout=5s']
+        if self.settings.kubeconfig:
+            prefix[1:1]=['--kubeconfig',str(self.settings.kubeconfig)]
+        fields=['metadata.generation','status.observedGeneration','spec.replicas','status.replicas',
+                'status.updatedReplicas','status.readyReplicas','status.availableReplicas']
+        expression='jsonpath='+'{"|"}'.join('{.'+field+'}' for field in fields)
+        checks=0
+        while time.monotonic()<deadline:
+            checks+=1
+            observed={'attempt':checks,'rollout_ready':False,'health_status':None}
+            try:
+                hook.check('diagnose','kubectl_read',{'operation':'get','resource':'deployment/'+service})
+                response=command(prefix+['get','deployment/'+service,'-o',expression],
+                                 timeout=max(.1,min(10,deadline-time.monotonic())))
+                if response['exit_code']==0:
+                    values=[int(v or 0) for v in response['stdout'].strip().split('|')]
+                    generation,seen,desired,total,updated,ready,available=values
+                    observed['deployment']=dict(zip(fields,values))
+                    observed['rollout_ready']=(generation>0 and seen>=generation and desired>0
+                                                and total==updated==ready==available==desired)
+                if observed['rollout_ready'] and time.monotonic()<deadline:
+                    hook.check('diagnose','get_health',{})
+                    health=fetch_observation(alert.health_url,timeout=max(.1,min(6,deadline-time.monotonic())),include_status=True)
+                    observed['health_status']=health['http_status']
+                    if health['exit_code']==0 and health['http_status']==200 and time.monotonic()<deadline:
+                        emit('recovery_verified',observed)
+                        return {'recovered':True,'checks':checks,'last_check':observed,
+                                'elapsed_seconds':round(time.monotonic()-start,3)}
+            except (subprocess.TimeoutExpired,ValueError) as error:
+                observed['error']=type(error).__name__
+            emit('recovery_check',observed)
+            await asyncio.sleep(min(1,max(0,deadline-time.monotonic())))
+        return {'recovered':False,'checks':checks,'last_check':observed,
+                'elapsed_seconds':round(time.monotonic()-start,3),
+                'reason':'Deployment readiness and HTTP 200 health were not both confirmed before the deadline'}
 
     async def run(self,alert):
         start=time.perf_counter()
@@ -49,15 +91,21 @@ class Workflow:
                 elif diagnosis.remediation_type=='online_op':
                     action=diagnosis.action or {}
                     if hook.online(action,diagnosis.root_service,tools.evidence):
+                        if not alert.health_url:
+                            raise ValueError('Automatic restart requires an operator-configured health_url')
+                        validate_observation_url(alert.health_url)
                         argv=[self.settings.kubectl,'--context',self.settings.kube_context,'--namespace',
                               self.settings.kube_namespace,'rollout','restart','deployment/'+action['deployment']]
                         if self.settings.kubeconfig:
                             argv[1:1]=['--kubeconfig',str(self.settings.kubeconfig)]
                         response=command(argv,timeout=15)
                         emit('low_risk_action',response)
-                        result['route']='auto_remediated' if response['exit_code']==0 else 'needs_review'
+                        if response['exit_code']==0:
+                            result['recovery']=await self.verify_recovery(alert,diagnosis.root_service,hook,emit)
+                            if result['recovery']['recovered']:
+                                result['route']='auto_remediated'
                         if result['route']=='needs_review':
-                            result['review']=hook.review(run_id,action,'Allowed restart did not complete')
+                            result['review']=hook.review(run_id,action,'Restart failed or service recovery was not confirmed')
                     else:
                         result['review']=hook.review(run_id,action,'High-risk or non-allowlisted online action was blocked')
                 else:

@@ -1,0 +1,96 @@
+{"stage": "alert", "seconds": 0.001, "data": {"id": "real-k3s-inventory-stall", "summary": "Inventory workers stopped making progress. Collect current observations and check any relevant previous incidents.", "metrics_url": "http://127.0.0.1:18088/cgi-bin/metrics", "traces_url": "http://127.0.0.1:18088/cgi-bin/traces", "health_url": "http://127.0.0.1:18088/cgi-bin/health"}}
+{"stage": "pre_tool_use", "seconds": 12.81, "data": {"stage": "diagnose", "tool": "get_metrics", "decision": "allow"}}
+{"stage": "observation", "seconds": 13.833, "data": {"id": "e1", "tool": "get_metrics", "result": {"argv": ["C:\\Windows\\system32\\curl.EXE", "--fail", "--silent", "--show-error", "--max-time", "5", "http://127.0.0.1:18088/cgi-bin/metrics"], "exit_code": 0, "stdout": "{\"inventory\":{\"up\":1,\"stateful\":false,\"worker_pid\":10,\"worker_state\":\"T\",\"processed_total\":0,\"completed_requests_delta\":0,\"measurement\":\"actual container process\"}}\n", "stderr": ""}}}
+{"stage": "pre_tool_use", "seconds": 13.834, "data": {"stage": "diagnose", "tool": "get_traces", "decision": "allow"}}
+{"stage": "observation", "seconds": 13.854, "data": {"id": "e2", "tool": "get_traces", "result": {"argv": ["C:\\Windows\\system32\\curl.EXE", "--fail", "--silent", "--show-error", "--max-time", "5", "http://127.0.0.1:18088/cgi-bin/traces"], "exit_code": 0, "stdout": "{\"spans\":[{\"service\":\"inventory\",\"worker_state\":\"T\",\"error\":\"Worker process is stopped and makes no progress after a controlled runtime suspension.\"}]}\n", "stderr": ""}}}
+{"stage": "pre_tool_use", "seconds": 13.854, "data": {"stage": "diagnose", "tool": "search_past_incidents", "decision": "allow"}}
+{"stage": "observation", "seconds": 14.496, "data": {"id": "e3", "tool": "search_past_incidents", "result": {"transport": "official MCP in-memory session", "content": ["{\n  \"incidents\": []\n}"]}}}
+{"stage": "classification", "seconds": 20.49, "data": {"initial_type": "online_op", "remediation_type": "online_op", "action": {"operation": "restart", "deployment": "inventory"}, "reason": "current observation shows worker process is stopped and makes no progress after a controlled runtime suspension, indicating a stalled process that requires restart to resume operation"}}
+{"stage": "diagnosis", "seconds": 20.491, "data": {"root_service": "inventory", "cause": "Inventory worker process is stopped and makes no progress after a controlled runtime suspension. Evidence from metrics shows worker_state is 'T' and processed_total is 0, indicating no processing activity. Trace data confirms the worker process is halted post-suspension.", "remediation_type": "online_op", "confidence": 0.95, "evidence_ids": ["e1", "e2"], "action": {"operation": "restart", "deployment": "inventory"}}}
+{"stage": "pre_tool_use", "seconds": 20.491, "data": {"stage": "online_op", "tool": "restart", "current_stateless": true, "decision": "allow"}}
+{"stage": "low_risk_action", "seconds": 20.578, "data": {"argv": ["C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\bin\\kubectl.exe", "--kubeconfig", "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\k3s\\kubeconfig.json", "--context", "aiops-demo", "--namespace", "aiops-demo", "rollout", "restart", "deployment/inventory"], "exit_code": 0, "stdout": "deployment.apps/inventory restarted\n", "stderr": ""}}
+{"stage": "pre_tool_use", "seconds": 20.579, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 20.66, "data": {"attempt": 1, "rollout_ready": false, "health_status": null, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 2, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 21.668, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 21.746, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 21.766, "data": {"attempt": 2, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 22.774, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 22.851, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 22.866, "data": {"attempt": 3, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 23.88, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 23.957, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 23.972, "data": {"attempt": 4, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 24.988, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 25.065, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 25.08, "data": {"attempt": 5, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 26.085, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 26.161, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 26.175, "data": {"attempt": 6, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 27.18, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 27.256, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 27.273, "data": {"attempt": 7, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 28.283, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 28.36, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 28.375, "data": {"attempt": 8, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 29.388, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 29.464, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 29.478, "data": {"attempt": 9, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 30.494, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 30.571, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 30.586, "data": {"attempt": 10, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 31.6, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 31.677, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 31.695, "data": {"attempt": 11, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 32.697, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 32.775, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 32.79, "data": {"attempt": 12, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 33.804, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 33.881, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 33.895, "data": {"attempt": 13, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 34.91, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 34.985, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 35.0, "data": {"attempt": 14, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 36.005, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 36.08, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 36.095, "data": {"attempt": 15, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 37.096, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 37.173, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 37.188, "data": {"attempt": 16, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 38.192, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 38.269, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 38.283, "data": {"attempt": 17, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 39.299, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 39.376, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 39.39, "data": {"attempt": 18, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 40.405, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 40.481, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 40.495, "data": {"attempt": 19, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 41.51, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 41.586, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 41.6, "data": {"attempt": 20, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 42.603, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 42.679, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 42.694, "data": {"attempt": 21, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 43.708, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 43.783, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 43.798, "data": {"attempt": 22, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 44.81, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 44.888, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 44.902, "data": {"attempt": 23, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 45.906, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 45.983, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 45.998, "data": {"attempt": 24, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 47.013, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 47.089, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 47.104, "data": {"attempt": 25, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 48.119, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 48.196, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 48.21, "data": {"attempt": 26, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 49.225, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 49.299, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 49.314, "data": {"attempt": 27, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "pre_tool_use", "seconds": 50.319, "data": {"stage": "diagnose", "tool": "kubectl_read", "decision": "allow"}}
+{"stage": "pre_tool_use", "seconds": 50.404, "data": {"stage": "diagnose", "tool": "get_health", "decision": "allow"}}
+{"stage": "recovery_check", "seconds": 50.422, "data": {"attempt": 28, "rollout_ready": true, "health_status": 503, "deployment": {"metadata.generation": 6, "status.observedGeneration": 6, "spec.replicas": 1, "status.replicas": 1, "status.updatedReplicas": 1, "status.readyReplicas": 1, "status.availableReplicas": 1}}}
+{"stage": "human_review", "seconds": 50.581, "data": {"review_id": "6d5c739c953d424384975915a680730d", "reason": "Restart failed or service recovery was not confirmed"}}
+{"stage": "memory_saved", "seconds": 50.633, "data": {"database": "Milvus", "incident_id": "3d175fc62d294427a35c7141a6785ea4"}}

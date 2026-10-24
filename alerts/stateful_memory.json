@@ -2,5 +2,6 @@
   "id": "stateful_memory",
   "summary": "Stateful payment component is under memory pressure.",
   "metrics_url": "http://127.0.0.1:8765/metrics/stateful_memory",
-  "traces_url": "http://127.0.0.1:8765/traces/stateful_memory"
+  "traces_url": "http://127.0.0.1:8765/traces/stateful_memory",
+  "health_url": "http://127.0.0.1:8765/health/stateful_memory"
 }

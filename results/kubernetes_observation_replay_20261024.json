@@ -1,0 +1,86 @@
+{
+  "measured_at_utc": "2026-10-24T11:46:17.165483+00:00",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "classifier_source_sha256": "dbc2c80ba4ca896ab5b3936e668638ac744bdc11bfc8263e0d3b3a894a149961",
+  "scope": "Final classifier replay of saved actual K3s observations; service identity is supplied. No new Kubernetes actions are executed.",
+  "passed": 3,
+  "cases": 3,
+  "records": [
+    {
+      "observations": "kubernetes_low_risk_trace_20261024.jsonl",
+      "input_sha256": "b0590a6c63f5f0a8004914fd6bb673c451fed2a53f9ade67ceb79828c9ce7998",
+      "root_service_supplied": "inventory",
+      "classification": "online_op",
+      "action": {
+        "operation": "restart",
+        "deployment": "inventory"
+      },
+      "passed": true,
+      "events": [
+        {
+          "stage": "classification",
+          "data": {
+            "initial_type": "online_op",
+            "remediation_type": "online_op",
+            "action": {
+              "operation": "restart",
+              "deployment": "inventory"
+            },
+            "reason": "current evidence shows the worker process is in state 'T' (stopped) and makes no progress after a controlled runtime suspension, indicating a stalled process that requires operational intervention to resume"
+          }
+        }
+      ]
+    },
+    {
+      "observations": "kubernetes_high_risk_trace_20261024.jsonl",
+      "input_sha256": "a0dedadd59d2dc82d1cca97584f151ef2d3e0da24afc5dbb2ccc4e8a4fa4dd8a",
+      "root_service_supplied": "payments",
+      "classification": "online_op",
+      "action": {
+        "operation": "restart",
+        "deployment": "payments"
+      },
+      "passed": true,
+      "events": [
+        {
+          "stage": "classification",
+          "data": {
+            "initial_type": "online_op",
+            "remediation_type": "online_op",
+            "action": {
+              "operation": "restart",
+              "deployment": "payments"
+            },
+            "reason": "current evidence shows the worker process is in state 'T' (stopped) and makes no progress after a controlled runtime suspension, indicating a stalled process that requires restart to resume operation"
+          }
+        }
+      ]
+    },
+    {
+      "observations": "kubernetes_failed_recovery_trace_20261024.jsonl",
+      "input_sha256": "7c991ecfc1064784eee5452abc6a950fc5f0180351e5e15500d60aa79b3c74b3",
+      "root_service_supplied": "inventory",
+      "classification": "online_op",
+      "action": {
+        "operation": "restart",
+        "deployment": "inventory"
+      },
+      "passed": true,
+      "events": [
+        {
+          "stage": "classification",
+          "data": {
+            "initial_type": "online_op",
+            "remediation_type": "online_op",
+            "action": {
+              "operation": "restart",
+              "deployment": "inventory"
+            },
+            "reason": "current evidence shows the worker process is in state 'T' (stopped) and makes no progress after a controlled runtime suspension, indicating a stalled process that requires operational intervention to resume"
+          }
+        }
+      ]
+    }
+  ],
+  "paid_api_calls": 0
+}

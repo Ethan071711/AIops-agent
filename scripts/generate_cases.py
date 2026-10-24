@@ -60,4 +60,5 @@ if __name__=='__main__':
     for case in cases():
         (ROOT/'alerts'/(case['id']+'.json')).write_text(json.dumps({'id':case['id'],'summary':case['alert_summary'],
             'metrics_url':'http://127.0.0.1:8765/metrics/'+case['id'],
-            'traces_url':'http://127.0.0.1:8765/traces/'+case['id']},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+            'traces_url':'http://127.0.0.1:8765/traces/'+case['id'],
+            'health_url':'http://127.0.0.1:8765/health/'+case['id']},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

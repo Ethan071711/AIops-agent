@@ -95,7 +95,14 @@ def test_history_or_ambiguous_state_cannot_authorize_a_current_restart(settings)
 
 
 @pytest.mark.parametrize('source',['import os\nos.remove("x")','__builtins__["eval"]("1")',
-                                  'getattr(1,"__class__")','x=().__class__'])
+                                  'getattr(1,"__class__")','x=().__class__',
+                                  'writer=open\nwriter("marker", "w")',
+                                  'evaluate=eval\nevaluate("40+2")',
+                                  'from collections import _sys\nx=_sys.modules',
+                                  'x=(v for v in [1])\nframe=x.gi_frame',
+                                  'f=[].append\nf(1)',
+                                  'f=len\nf([])',
+                                  '@len\ndef value():\n    return 1'])
 def test_generated_code_cannot_introduce_io_or_reflection(source):
     with pytest.raises(PermissionError):
         validate_python_patch(source)
@@ -214,6 +221,20 @@ def test_history_cannot_supply_the_current_remediation_classification(settings):
     assert result.evidence_ids==initial.evidence_ids
 
 
+def test_restart_classification_retries_an_unbound_action(settings):
+    from types import SimpleNamespace
+    class Model:
+        calls=0
+        def chat(self,messages):
+            self.calls+=1
+            action={'operation':'restart','target':'wrong-service'} if self.calls==1 else {'operation':'restart','deployment':'inventory'}
+            return {'content':json.dumps({'remediation_type':'online_op','action':action,'reason':'Stalled process'})}
+    model=Model()
+    tools=SimpleNamespace(settings=settings,evidence={},emit=lambda *args:None)
+    result=DiagnosisAgent(model).classify(diagnosis().model_copy(update={'root_service':'inventory'}),tools)
+    assert model.calls==2 and result.action=={'operation':'restart','deployment':'inventory'}
+
+
 def fixture_repo(tmp_path):
     repo=tmp_path/'target';(repo/'examples/tests').mkdir(parents=True)
     (repo/'examples/service.py').write_text('def value():\n    return 1\n')
@@ -250,3 +271,55 @@ def test_repair_retries_a_rejected_span_without_relaxing_the_guard(settings,tmp_
     model=Model();events=[]
     result=RepairAgent(model,settings,PreToolUse(settings),lambda s,d:events.append(s)).run('retry-repair',diagnosis())
     assert model.calls==2 and result['status']=='verified_local' and 'patch_rejected' in events
+
+
+def test_repair_rejects_aliased_io_before_executing_a_generated_patch(settings,tmp_path):
+    repo=fixture_repo(tmp_path)
+    settings.target_url=str(repo);settings.target_branch='fault';settings.allowed_files=['examples/service.py']
+    class Model:
+        def patch(self,prompt):
+            return {'explanation':'unsafe patch probe','changes':[{'path':'examples/service.py',
+                    'old':'return 1','new':'writer = open\n    return 2'}]}
+    events=[]
+    with pytest.raises(PermissionError):
+        RepairAgent(Model(),settings,PreToolUse(settings),lambda s,d:events.append(s)).run('unsafe',diagnosis())
+    assert 'baseline_tests' in events and 'patch' not in events and 'verification' not in events
+    assert (settings.workspace/'clones/unsafe/examples/service.py').read_text().endswith('return 1\n')
+
+
+@pytest.mark.parametrize('deployment,health_status,health_url,expected',[
+    ('2|2|1|1|1|1|1',200,'http://127.0.0.1/health','auto_remediated'),
+    ('2|1|1|1|0|1|1',200,'http://127.0.0.1/health','needs_review'),
+    ('2|2|1|1|1|1|1',503,'http://127.0.0.1/health','needs_review'),
+    ('2|2|1|1|1|1|1',302,'http://127.0.0.1/health','needs_review'),
+    ('2|2|1|1|1|1|1',200,None,'needs_review'),
+    ('2|2|1|1|1|1|1',200,'https://example.com/health','needs_review'),
+])
+def test_restart_success_requires_current_rollout_and_health(settings,monkeypatch,deployment,health_status,health_url,expected):
+    settings.allow_restart=True;settings.recovery_timeout_seconds=1
+    async def diagnosed(self,alert,tools,rounds):
+        tools.evidence={'e1':{'tool':'get_metrics','result':{'stdout':'{"inventory":{"stateful":false}}'}}}
+        return Diagnosis(root_service='inventory',cause='Controlled stalled worker',remediation_type='online_op',
+                         confidence=.9,evidence_ids=['e1'],action={'operation':'restart','deployment':'inventory'})
+    calls=[]
+    def command(argv,**kwargs):
+        calls.append(argv)
+        return {'exit_code':0,'stdout':'restarted' if 'restart' in argv else deployment,'stderr':''}
+    monkeypatch.setattr(DiagnosisAgent,'run',diagnosed)
+    monkeypatch.setattr('aiops.workflow.command',command)
+    monkeypatch.setattr('aiops.workflow.fetch_observation',lambda *a,**k:{'exit_code':0,'http_status':health_status})
+    class Memory:
+        rows=[]
+        def search(self,*args):return []
+        def add(self,*args):self.rows.append(args)
+    memory=Memory()
+    alert=Alert(id='restart-probe',summary='Unit probe',metrics_url='http://127.0.0.1/metrics',
+                traces_url='http://127.0.0.1/traces',health_url=health_url)
+    result=asyncio.run(Workflow(settings,object(),memory).run(alert))
+    assert result['route']==expected and memory.rows[-1][-1]==expected
+    if expected=='auto_remediated':
+        assert result['recovery']['recovered'] and result['recovery']['last_check']['health_status']==200
+    else:
+        assert json.loads(Path(result['review']).read_text())['status']=='pending'
+    if health_url is None or health_url.startswith('https://example'):
+        assert not calls

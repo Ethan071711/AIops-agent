@@ -1,10 +1,11 @@
 {
-  "measured_at_utc": "2026-10-24T10:31:54.427017+00:00",
+  "measured_at_utc": "2026-10-24T11:36:28.576033+00:00",
   "model": "Qwen/Qwen3-4B-Instruct-2507",
-  "cases": 11,
-  "correct": 11,
+  "cases": 13,
+  "correct": 13,
   "accuracy": 1.0,
   "scope": "Additional synthetic classification checks used during development; expected labels are not passed to the model. Service identity is supplied. Not an untouched holdout, end-to-end or production benchmark.",
+  "used_for_prompt_feedback": true,
   "expected_labels_passed_to_model": false,
   "results": [
     {
@@ -208,7 +209,43 @@
           }
         }
       ]
+    },
+    {
+      "id": "lifetime-counter-but-stopped",
+      "expected": "online_op",
+      "predicted": "online_op",
+      "correct": true,
+      "events": [
+        {
+          "stage": "classification",
+          "data": {
+            "initial_type": "info_only",
+            "remediation_type": "online_op",
+            "action": {
+              "operation": "restart",
+              "deployment": "parcel-worker"
+            },
+            "reason": "The worker process is stopped after a controlled runtime suspension and pending work is not progressing, indicating a need for operational intervention to resume processing."
+          }
+        }
+      ]
+    },
+    {
+      "id": "lifetime-counter-and-progress",
+      "expected": "info_only",
+      "predicted": "info_only",
+      "correct": true,
+      "events": [
+        {
+          "stage": "classification",
+          "data": {
+            "initial_type": "info_only",
+            "remediation_type": "info_only",
+            "action": null,
+            "reason": "Current observations show the parcel-worker is up, processing requests, and completing work with no errors or stalled work. The state is stable and within expected operational behavior; no local corrective action is required."
+          }
+        }
+      ]
     }
-  ],
-  "used_for_prompt_feedback": true
+  ]
 }

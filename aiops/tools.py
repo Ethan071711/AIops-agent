@@ -15,6 +15,24 @@ def command(argv,cwd=None,timeout=20):
             'stdout':result.stdout[-10000:],'stderr':result.stderr[-2000:]}
 
 
+def validate_observation_url(url):
+    parts=urlsplit(url)
+    if parts.scheme not in {'http','https'} or parts.username or parts.password or parts.hostname not in {'127.0.0.1','localhost','::1'}:
+        raise PermissionError('This demo only fetches explicitly configured loopback observations')
+
+
+def fetch_observation(url,timeout=6,include_status=False):
+    validate_observation_url(url)
+    argv=[shutil.which('curl') or 'curl','--fail','--silent','--show-error','--max-time','5']
+    if include_status:
+        argv+=['--write-out','\n%{http_code}']
+    result=command(argv+[url],timeout=timeout)
+    if include_status:
+        body,_,status=result['stdout'].rpartition('\n')
+        result.update(stdout=body,http_status=int(status) if status.isdigit() else 0)
+    return result
+
+
 def tool_spec(name,description,properties=None,required=None):
     return {'type':'function','function':{'name':name,'description':description,
             'parameters':{'type':'object','properties':properties or {},'required':required or [],'additionalProperties':False}}}
@@ -42,10 +60,7 @@ class DiagnosticTools:
             if args:
                 raise ValueError('Observation URLs cannot be overridden by the model')
             url=self.alert.metrics_url if name=='get_metrics' else self.alert.traces_url
-            parts=urlsplit(url)
-            if parts.scheme not in {'http','https'} or parts.username or parts.password or parts.hostname not in {'127.0.0.1','localhost','::1'}:
-                raise PermissionError('This demo only fetches explicitly configured loopback observations')
-            result=command([shutil.which('curl') or 'curl','--fail','--silent','--show-error','--max-time','5',url])
+            result=fetch_observation(url)
         elif name=='git_log':
             if args:
                 raise ValueError('git_log takes no arguments')

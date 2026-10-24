@@ -31,9 +31,11 @@ async def evaluate():
     try:
         for case in cases:
             for repeat in range(case['repeat']):
+                fixture.restarted.clear()
                 alert=Alert(id=f"{case['id']}-{repeat}",summary=case['alert_summary'],
                     metrics_url=f'http://127.0.0.1:{fixture.port}/metrics/'+case['id'],
-                    traces_url=f'http://127.0.0.1:{fixture.port}/traces/'+case['id'])
+                    traces_url=f'http://127.0.0.1:{fixture.port}/traces/'+case['id'],
+                    health_url=f'http://127.0.0.1:{fixture.port}/health/'+case['id'])
                 result=await workflow.run(alert)
                 expected=case['expected']
                 diagnosis=result['diagnosis'] or {}

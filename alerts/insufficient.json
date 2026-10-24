@@ -2,5 +2,6 @@
   "id": "insufficient",
   "summary": "The shop may be failing, but evidence collection is incomplete.",
   "metrics_url": "http://127.0.0.1:8765/metrics/insufficient",
-  "traces_url": "http://127.0.0.1:8765/traces/insufficient"
+  "traces_url": "http://127.0.0.1:8765/traces/insufficient",
+  "health_url": "http://127.0.0.1:8765/health/insufficient"
 }

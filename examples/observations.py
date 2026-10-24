@@ -12,6 +12,7 @@ class Observations:
         self.cases={c['id']:c for c in cases}
         self.live_metrics=live_metrics
         self.requests=[]
+        self.restarted=set()
         outer=self
 
         class Handler(BaseHTTPRequestHandler):
@@ -27,6 +28,10 @@ class Observations:
                 path=urlsplit(self.path).path
                 outer.requests.append({'method':'GET','path':path})
                 parts=path.strip('/').split('/')
+                if len(parts)==2 and parts[0]=='health' and parts[1] in outer.cases:
+                    # Explicitly simulated recovery following a successful fixture PATCH.
+                    recovered=bool(outer.restarted & set(outer.cases[parts[1]]['metrics']))
+                    return self.send({'fixture':True,'recovered':recovered},200 if recovered else 503)
                 if len(parts)==2 and parts[0] in {'metrics','traces'} and parts[1] in outer.cases:
                     if outer.live_metrics and parts[0]=='metrics':
                         return self.send(outer.live_metrics())
@@ -59,6 +64,7 @@ class Observations:
                 name=path.rsplit('/',1)[-1]
                 if name not in {'inventory','worker'} or not path.startswith('/apis/apps/v1/namespaces/aiops-demo/deployments/'):
                     return self.send({'kind':'Status','status':'Failure','reason':'Forbidden','code':403},403)
+                outer.restarted.add(name)
                 value=outer.deployment(name)
                 value['spec']['template']['metadata'].update(payload.get('spec',{}).get('template',{}).get('metadata',{}))
                 self.send(value)
@@ -67,11 +73,12 @@ class Observations:
         self.port=self.server.server_address[1]
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True)
 
-    @staticmethod
-    def deployment(name):
-        return {'apiVersion':'apps/v1','kind':'Deployment','metadata':{'name':name,'namespace':'aiops-demo','resourceVersion':'1','generation':1},
+    def deployment(self,name):
+        generation=2 if name in self.restarted else 1
+        return {'apiVersion':'apps/v1','kind':'Deployment','metadata':{'name':name,'namespace':'aiops-demo','resourceVersion':str(generation),'generation':generation},
                 'spec':{'replicas':1,'selector':{'matchLabels':{'app':name}},
-                        'template':{'metadata':{'labels':{'app':name}},'spec':{'containers':[{'name':'app','image':'fixture'}]}}}}
+                        'template':{'metadata':{'labels':{'app':name}},'spec':{'containers':[{'name':'app','image':'fixture'}]}}},
+                'status':{'observedGeneration':generation,'replicas':1,'updatedReplicas':1,'readyReplicas':1,'availableReplicas':1}}
 
     def start(self):
         self.thread.start()

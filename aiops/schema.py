@@ -10,6 +10,7 @@ class Alert(BaseModel):
     summary: str = Field(min_length=2,max_length=2000)
     metrics_url: str
     traces_url: str
+    health_url: str | None = None
 
 
 class Diagnosis(BaseModel):
@@ -60,3 +61,4 @@ class Settings(BaseModel):
     allow_restart: bool = False
     publish_pr: bool = False
     max_tool_rounds: int = Field(default=5,ge=1,le=8)
+    recovery_timeout_seconds: int = Field(default=90,ge=1,le=300)

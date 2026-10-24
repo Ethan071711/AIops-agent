@@ -1,0 +1,69 @@
+{
+  "measured_at_utc": "2026-10-24T11:28:40.905041+00:00",
+  "server_version": "v1.37.1+k3s1",
+  "cluster_backend": "actual K3s/containerd; controlled workload configured STALL_MODE=always",
+  "restart_accepted": true,
+  "pod_replaced": true,
+  "health_status_after_restart": 503,
+  "worker_observations": {
+    "inventory": {
+      "up": 1,
+      "stateful": false,
+      "worker_pid": 10,
+      "worker_state": "T",
+      "processed_total": 1,
+      "completed_requests_delta": 0,
+      "measurement": "actual container process"
+    }
+  },
+  "human_review_status": "pending",
+  "result": {
+    "run_id": "3d175fc62d294427a35c7141a6785ea4",
+    "alert_id": "real-k3s-inventory-stall",
+    "diagnosis": {
+      "root_service": "inventory",
+      "cause": "Inventory worker process is stopped and makes no progress after a controlled runtime suspension. Evidence from metrics shows worker_state is 'T' and processed_total is 0, indicating no processing activity. Trace data confirms the worker process is halted post-suspension.",
+      "remediation_type": "online_op",
+      "confidence": 0.95,
+      "evidence_ids": [
+        "e1",
+        "e2"
+      ],
+      "action": {
+        "operation": "restart",
+        "deployment": "inventory"
+      }
+    },
+    "route": "needs_review",
+    "fix": null,
+    "errors": [],
+    "paid_api_calls": 0,
+    "recovery": {
+      "recovered": false,
+      "checks": 28,
+      "last_check": {
+        "attempt": 28,
+        "rollout_ready": true,
+        "health_status": 503,
+        "deployment": {
+          "metadata.generation": 6,
+          "status.observedGeneration": 6,
+          "spec.replicas": 1,
+          "status.replicas": 1,
+          "status.updatedReplicas": 1,
+          "status.readyReplicas": 1,
+          "status.availableReplicas": 1
+        }
+      },
+      "elapsed_seconds": 30.001,
+      "reason": "Deployment readiness and HTTP 200 health were not both confirmed before the deadline"
+    },
+    "review": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\kubernetes\\20261024T112747\\reviews\\6d5c739c953d424384975915a680730d.json",
+    "duration_seconds": 50.633,
+    "trace_path": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\kubernetes\\20261024T112747\\runs\\3d175fc62d294427a35c7141a6785ea4\\trace.jsonl"
+  },
+  "paid_api_calls": 0,
+  "limitations": [
+    "Controlled single-node failure test, not a production outage."
+  ]
+}

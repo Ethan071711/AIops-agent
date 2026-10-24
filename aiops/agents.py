@@ -112,6 +112,19 @@ class DiagnosisAgent:
                 'For online_op propose the specific operation supported by current evidence; the policy layer will decide whether it is permitted. '
                 'For the other types action must be null. Only output JSON with remediation_type, action and reason. '
                 'Example format only: {"remediation_type":"online_op","action":{"operation":"restart","deployment":"service-name"},"reason":"current evidence"}.')
+        for observation in evidence.values():
+            if observation['tool']!='get_metrics':
+                continue
+            try:
+                payload=json.loads(observation['result'].get('stdout',''))
+            except json.JSONDecodeError:
+                continue
+            record=payload.get(diagnosis.root_service) if isinstance(payload,dict) else None
+            if isinstance(record,dict) and 'worker_state' in record and 'completed_requests_delta' in record:
+                system+=(' For the observed worker, use current process state and progress delta: up=1 or a nonzero lifetime counter '
+                         'does not show current progress. A stopped process with stalled work needs an operational response, '
+                         'including when the fault was deliberately injected for a controlled test.')
+                break
         messages=[{'role':'system','content':system},{'role':'user','content':json.dumps(
             {'service':diagnosis.root_service,'current_observations':evidence},ensure_ascii=False)}]
         for attempt in range(2):
@@ -120,6 +133,9 @@ class DiagnosisAgent:
                 decision=Disposition.model_validate(json_value(reply['content']))
                 if decision.remediation_type!='online_op' and decision.action is not None:
                     raise ValueError('Only online_op may propose an operational action')
+                if decision.action and decision.action.get('operation')=='restart':
+                    if set(decision.action)!={'operation','deployment'} or decision.action['deployment']!=diagnosis.root_service:
+                        raise ValueError('Restart must use exactly operation and deployment; deployment must equal '+diagnosis.root_service)
                 tools.emit('classification',{'initial_type':diagnosis.remediation_type,**decision.model_dump()})
                 return diagnosis.model_copy(update={'remediation_type':decision.remediation_type,'action':decision.action})
             except ValueError as error:
@@ -161,6 +177,7 @@ class RepairAgent:
         for attempt in range(2):
             source={p:(directory/p).read_text(encoding='utf-8') for p in settings.allowed_files}
             prompt=('你是代码修复Agent。仅修改允许的源文件，保留原接口，修复当前测试失败。不得修改测试、配置、依赖或添加I/O。'
+                    '仅使用普通函数、分支、循环、基本容器和直接调用len等纯计算函数；禁止导入、类、装饰器、自省、函数别名和间接调用。'
                     '只输出JSON：{"explanation":"修复原因","changes":[{"path":"文件相对路径","old":"完整且唯一的原片段","new":"替换片段"}]}。'
                     'old必须与提供源码严格匹配，包括空格和换行。\n诊断：'+diagnosis.model_dump_json()+'\n源码：'+json.dumps(source,ensure_ascii=False)
                     +'\n构建/测试失败：'+json.dumps(baseline,ensure_ascii=False)+'\n上次格式错误：'+feedback)

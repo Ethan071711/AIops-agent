@@ -2,5 +2,6 @@
   "id": "offset",
   "summary": "Event consumption stopped because offsets are out of range.",
   "metrics_url": "http://127.0.0.1:8765/metrics/offset",
-  "traces_url": "http://127.0.0.1:8765/traces/offset"
+  "traces_url": "http://127.0.0.1:8765/traces/offset",
+  "health_url": "http://127.0.0.1:8765/health/offset"
 }

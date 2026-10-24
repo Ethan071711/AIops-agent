@@ -2,5 +2,6 @@
   "id": "redis_pool",
   "summary": "Checkout failures with cache timeouts.",
   "metrics_url": "http://127.0.0.1:8765/metrics/redis_pool",
-  "traces_url": "http://127.0.0.1:8765/traces/redis_pool"
+  "traces_url": "http://127.0.0.1:8765/traces/redis_pool",
+  "health_url": "http://127.0.0.1:8765/health/redis_pool"
 }

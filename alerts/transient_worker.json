@@ -2,5 +2,6 @@
   "id": "transient_worker",
   "summary": "Inventory worker is saturated after a transient burst.",
   "metrics_url": "http://127.0.0.1:8765/metrics/transient_worker",
-  "traces_url": "http://127.0.0.1:8765/traces/transient_worker"
+  "traces_url": "http://127.0.0.1:8765/traces/transient_worker",
+  "health_url": "http://127.0.0.1:8765/health/transient_worker"
 }

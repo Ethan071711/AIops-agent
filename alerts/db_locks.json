@@ -2,5 +2,6 @@
   "id": "db_locks",
   "summary": "Order submissions wait for database locks.",
   "metrics_url": "http://127.0.0.1:8765/metrics/db_locks",
-  "traces_url": "http://127.0.0.1:8765/traces/db_locks"
+  "traces_url": "http://127.0.0.1:8765/traces/db_locks",
+  "health_url": "http://127.0.0.1:8765/health/db_locks"
 }

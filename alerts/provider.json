@@ -2,5 +2,6 @@
   "id": "provider",
   "summary": "Payment requests see upstream 503 responses.",
   "metrics_url": "http://127.0.0.1:8765/metrics/provider",
-  "traces_url": "http://127.0.0.1:8765/traces/provider"
+  "traces_url": "http://127.0.0.1:8765/traces/provider",
+  "health_url": "http://127.0.0.1:8765/health/provider"
 }

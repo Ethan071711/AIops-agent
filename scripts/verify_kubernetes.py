@@ -1,5 +1,6 @@
 """Validate an Agent restart and a blocked stateful operation on real workloads."""
 import asyncio
+import argparse
 import json
 import os
 import sys
@@ -18,7 +19,7 @@ from aiops.tools import command
 from aiops.workflow import Workflow
 
 
-async def main():
+async def main(expect_unrecovered=False):
     config=Path(os.environ['AIOPS_KUBECONFIG']).resolve()
     assert config.is_file(),'Provide the scoped aiops-demo service-account kubeconfig'
     kubectl=os.getenv('AIOPS_KUBECTL','kubectl')
@@ -54,7 +55,8 @@ async def main():
         assert measured['payments']['payments']['stateful'] is True
     state=ROOT/'.storage/kubernetes'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')
     state.mkdir(parents=True)
-    settings=Settings(workspace=state,source_repo=ROOT,kubectl=kubectl,kubeconfig=config,allow_restart=True)
+    settings=Settings(workspace=state,source_repo=ROOT,kubectl=kubectl,kubeconfig=config,allow_restart=True,
+                      recovery_timeout_seconds=30 if expect_unrecovered else 90)
     memory=IncidentMemory(state/'incidents.db')
     model=LocalModel()
     start=time.perf_counter()
@@ -62,10 +64,36 @@ async def main():
         workflow=Workflow(settings,model,memory)
         low=await workflow.run(Alert(id='real-k3s-inventory-stall',
             summary='Inventory workers stopped making progress. Collect current observations and check any relevant previous incidents.',
-            metrics_url=urls['inventory']+'/metrics',traces_url=urls['inventory']+'/traces'))
+            metrics_url=urls['inventory']+'/metrics',traces_url=urls['inventory']+'/traces',
+            health_url=urls['inventory']+'/health'))
         assert low['diagnosis']['root_service']=='inventory' and low['diagnosis']['remediation_type']=='online_op',low
-        assert low['route']=='auto_remediated',low
-        print('Agent restart accepted by the real Kubernetes API; waiting for replacement Pod.',flush=True)
+        if expect_unrecovered:
+            assert low['route']=='needs_review' and not low['recovery']['recovered'],low
+            assert low['recovery']['last_check']['rollout_ready'] and low['recovery']['last_check']['health_status']==503,low
+            events=[json.loads(line) for line in Path(low['trace_path']).read_text(encoding='utf-8').splitlines()]
+            assert any(e['stage']=='low_risk_action' and e['data']['exit_code']==0 for e in events)
+            review=json.loads(Path(low['review']).read_text(encoding='utf-8'))
+            assert review['status']=='pending'
+            after=pods('inventory')
+            assert after and set(after).isdisjoint(inventory_pods_before)
+            with httpx.Client(timeout=10,trust_env=False) as client:
+                assert client.get(urls['inventory']+'/health').status_code==503
+                still_stalled=client.get(urls['inventory']+'/metrics').json()
+            assert still_stalled['inventory']['completed_requests_delta']==0
+            report={'measured_at_utc':datetime.now(timezone.utc).isoformat(),
+                    'server_version':json.loads(kube('version','-o','json')['stdout'])['serverVersion']['gitVersion'],
+                    'cluster_backend':'actual K3s/containerd; controlled workload configured STALL_MODE=always',
+                    'restart_accepted':True,'pod_replaced':True,'health_status_after_restart':503,
+                    'worker_observations':still_stalled,'human_review_status':'pending','result':low,'paid_api_calls':0,
+                    'limitations':['Controlled single-node failure test, not a production outage.']}
+            results=ROOT/'results';results.mkdir(exist_ok=True)
+            (results/'kubernetes_failed_recovery_20261024.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+            (results/'kubernetes_failed_recovery_trace_20261024.jsonl').write_bytes(Path(low['trace_path']).read_bytes())
+            print(json.dumps({'real_failed_recovery_validation':'passed','restart_accepted':True,'worker_still_stalled':True,
+                              'route':low['route'],'human_review_status':'pending'},indent=2),flush=True)
+            return
+        assert low['route']=='auto_remediated' and low['recovery']['recovered'],low
+        print('Agent confirmed deployment readiness and HTTP 200 health; independently checking worker progress.',flush=True)
         rollout=kube('rollout','status','deployment/inventory','--timeout=90s',timeout=100)
         with httpx.Client(timeout=10,trust_env=False) as client:
             for _ in range(30):
@@ -83,7 +111,8 @@ async def main():
         recovery_seconds=round(time.perf_counter()-start,3)
         high=await workflow.run(Alert(id='real-k3s-stateful-stall',
             summary='Payment worker is stalled. Inspect current state and compare any prior incident before proposing a response.',
-            metrics_url=urls['payments']+'/metrics',traces_url=urls['payments']+'/traces'))
+            metrics_url=urls['payments']+'/metrics',traces_url=urls['payments']+'/traces',
+            health_url=urls['payments']+'/health'))
         assert high['diagnosis']['root_service']=='payments' and high['diagnosis']['remediation_type']=='online_op',high
         assert high['route']=='needs_review' and Path(high['review']).is_file(),high
         payments_after=resource('deployment','payments')
@@ -119,4 +148,6 @@ async def main():
 
 
 if __name__=='__main__':
-    asyncio.run(main())
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--expect-unrecovered',action='store_true',help='Requires the test administrator to set inventory STALL_MODE=always')
+    asyncio.run(main(parser.parse_args().expect_unrecovered))
