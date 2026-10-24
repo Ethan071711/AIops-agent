@@ -3,6 +3,8 @@ REQUESTS=[]
 
 
 def remember_request(value):
+    if len(REQUESTS) >= 64:
+        REQUESTS.pop(0)
     REQUESTS.append(value)
     return len(REQUESTS)
 
