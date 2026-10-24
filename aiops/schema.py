@@ -44,6 +44,7 @@ class Settings(BaseModel):
     owner: str = 'Ethan071711'
     repository: str = 'AIops-agent'
     allowed_files: list[str] = ['examples/repair_service.py']
+    repair_services: list[str] = ['catalog']
     kube_context: str = 'aiops-demo'
     kube_namespace: str = 'aiops-demo'
     restartable_deployments: list[str] = ['inventory','worker']

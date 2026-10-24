@@ -1,10 +1,12 @@
 """Own-repository PR creation. Credentials stay in memory and out of remotes/logs."""
 import os
 import subprocess
+from contextlib import contextmanager
 
 import httpx
 
 
+@contextmanager
 def client_for(owner):
     token=os.getenv('GITHUB_TOKEN')
     if not token:
@@ -15,14 +17,13 @@ def client_for(owner):
         token=values.get('password')
     if not token:
         raise PermissionError('No GitHub credential available')
-    client=httpx.Client(base_url='https://api.github.com',timeout=30,
-        headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'})
-    profile=client.get('/user')
-    profile.raise_for_status()
-    if profile.json()['login'].lower()!=owner.lower():
-        client.close()
-        raise PermissionError('PR publishing is restricted to the authenticated owner repository')
-    return client
+    with httpx.Client(base_url='https://api.github.com',timeout=30,
+        headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'}) as client:
+        profile=client.get('/user')
+        profile.raise_for_status()
+        if profile.json()['login'].lower()!=owner.lower():
+            raise PermissionError('PR publishing is restricted to the authenticated owner repository')
+        yield client
 
 
 def open_pull_request(settings,branch,body):

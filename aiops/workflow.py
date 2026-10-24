@@ -30,6 +30,7 @@ class Workflow:
         hook=PreToolUse(self.settings,emit)
         result={'run_id':run_id,'alert_id':alert.id,'diagnosis':None,'route':'needs_review','fix':None,
                 'errors':[],'paid_api_calls':0}
+        diagnosis=None
         emit('alert',alert.model_dump())
         try:
             async with create_connected_server_and_client_session(memory_server(self.memory)) as session:
@@ -47,7 +48,7 @@ class Workflow:
                         result['review']=hook.review(run_id,diagnosis.model_dump(),'Repair did not pass the build/test gate')
                 elif diagnosis.remediation_type=='online_op':
                     action=diagnosis.action or {}
-                    if hook.online(action):
+                    if hook.online(action,diagnosis.root_service,tools.evidence):
                         argv=[self.settings.kubectl,'--context',self.settings.kube_context,'--namespace',
                               self.settings.kube_namespace,'rollout','restart','deployment/'+action['deployment']]
                         if self.settings.kubeconfig:
@@ -61,11 +62,18 @@ class Workflow:
                         result['review']=hook.review(run_id,action,'High-risk or non-allowlisted online action was blocked')
                 else:
                     result['route']='info_only'
-                self.memory.add(run_id,alert,diagnosis,result['route'])
-                emit('memory_saved',{'database':'Milvus','incident_id':run_id})
         except Exception as error:
+            while isinstance(error,BaseExceptionGroup) and len(error.exceptions)==1:
+                error=error.exceptions[0]
             result['errors'].append({'kind':type(error).__name__,'detail':str(error)[:500]})
             result['review']=hook.review(run_id,{'alert':alert.id},'Agent failure: '+type(error).__name__)
+        if diagnosis is not None:
+            try:
+                self.memory.add(run_id,alert,diagnosis,result['route'])
+                emit('memory_saved',{'database':'Milvus','incident_id':run_id})
+            except Exception as error:
+                result['errors'].append({'kind':type(error).__name__,'detail':'Incident memory write failed'})
+                result['review']=hook.review(run_id,{'incident_id':run_id},'Milvus write failed; diagnosis trace retained locally')
         result['duration_seconds']=round(time.perf_counter()-start,3)
         result['trace_path']=str(directory/'trace.jsonl')
         (directory/'result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')

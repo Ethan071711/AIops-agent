@@ -31,6 +31,7 @@ class IncidentMemory:
         if not self.client.has_collection(self.collection):
             self.client.create_collection(self.collection,dimension=dimension,id_type='string',
                 max_length=64,metric_type='COSINE',enable_dynamic_field=True)
+        self.client.load_collection(self.collection)
 
     def add(self,run_id,alert,diagnosis,route):
         text=f"{alert.summary}\n服务：{diagnosis.root_service}\n原因：{diagnosis.cause}\n处理：{route}"

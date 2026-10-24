@@ -42,12 +42,27 @@ class PreToolUse:
         self.emit('human_review',{'review_id':request['id'],'reason':reason})
         return str(path)
 
-    def online(self,action):
-        # Only explicitly named stateless deployment restarts are automatic.
-        allowed=(self.settings.allow_restart and set(action)=={'operation','deployment'} and action['operation']=='restart'
+    def online(self,action,service,evidence):
+        # A historical or model-supplied stateless claim cannot authorize a restart.
+        stateful=[]
+        for observation in evidence.values():
+            result=observation['result']
+            if observation['tool']!='get_metrics' or result.get('exit_code',0)!=0:
+                continue
+            try:
+                payload=json.loads(result.get('stdout',''))
+            except json.JSONDecodeError:
+                continue
+            record=payload.get(service) if isinstance(payload,dict) else None
+            if isinstance(record,dict) and 'stateful' in record:
+                stateful.append(record['stateful'])
+        stateless_now=bool(stateful) and all(flag is False for flag in stateful)
+        allowed=(self.settings.allow_restart and stateless_now
+                 and set(action)=={'operation','deployment'} and action['operation']=='restart'
+                 and action['deployment']==service
                  and action['deployment'] in self.settings.restartable_deployments)
         self.emit('pre_tool_use',{'stage':'online_op','tool':action.get('operation'),
-                                 'decision':'allow' if allowed else 'human_review'})
+                                 'current_stateless':stateless_now,'decision':'allow' if allowed else 'human_review'})
         return allowed
 
 

@@ -19,7 +19,11 @@ def main():
     parser.add_argument('--publish-pr',action='store_true',help='Push a tested repair and open a PR in the configured owner repository')
     args=parser.parse_args()
     settings=Settings(workspace=ROOT/'.storage',source_repo=args.source_repo.resolve(),publish_pr=args.publish_pr,
-        kubectl=os.getenv('AIOPS_KUBECTL','kubectl'))
+        kubectl=os.getenv('AIOPS_KUBECTL','kubectl'),
+        kubeconfig=Path(os.environ['AIOPS_KUBECONFIG']) if os.getenv('AIOPS_KUBECONFIG') else None,
+        kube_context=os.getenv('AIOPS_KUBE_CONTEXT','aiops-demo'),
+        kube_namespace=os.getenv('AIOPS_KUBE_NAMESPACE','aiops-demo'),
+        allow_restart=os.getenv('AIOPS_ALLOW_RESTARTS')=='1')
     alert=Alert.model_validate_json(args.alert.read_text(encoding='utf-8'))
     memory=IncidentMemory(os.getenv('MILVUS_URI',str(ROOT/'.storage/incidents.db')))
     try:

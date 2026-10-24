@@ -1,0 +1,98 @@
+{
+  "run_id": "7378f85904e94d4d8791194b6da8cdb4",
+  "alert_id": "capstone-history-growth",
+  "diagnosis": {
+    "root_service": "catalog",
+    "cause": "Catalog service is retaining request history beyond the expected limit (64 entries) leading to memory growth. Evidence shows 1000 cache entries are stored, and traces confirm allocation growth after deployment. This issue was introduced by a test commit (bf1e8db) that removed a cache bound to reproduce memory growth, indicating a code defect in memory management.",
+    "remediation_type": "code_fix",
+    "confidence": 0.95,
+    "evidence_ids": [
+      "e1",
+      "e2",
+      "e3",
+      "e4"
+    ],
+    "action": null
+  },
+  "route": "code_fix_pr",
+  "fix": {
+    "status": "pr_created",
+    "baseline": {
+      "passed": false,
+      "build": {
+        "argv": [
+          "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.venv\\Scripts\\python.exe",
+          "-m",
+          "compileall",
+          "-q",
+          "examples"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "tests": {
+        "argv": [
+          "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "examples/tests",
+          "-p",
+          "no:cacheprovider"
+        ],
+        "exit_code": 1,
+        "stdout": "F.                                                                       [100%]\n================================== FAILURES ===================================\n______________ test_history_is_bounded_and_keeps_recent_requests ______________\n\n    def test_history_is_bounded_and_keeps_recent_requests():\n        service.reset()\n        for i in range(1000):\n            service.remember_request(i)\n>       assert len(service.REQUESTS)<=64,'Request history grows without a bound'\nE       AssertionError: Request history grows without a bound\nE       assert 1000 <= 64\nE        +  where 1000 = len([0, 1, 2, 3, 4, 5, ...])\nE        +    where [0, 1, 2, 3, 4, 5, ...] = service.REQUESTS\n\nexamples\\tests\\test_repair_service.py:8: AssertionError\n=========================== short test summary info ===========================\nFAILED examples/tests/test_repair_service.py::test_history_is_bounded_and_keeps_recent_requests\n1 failed, 1 passed in 0.07s\n",
+        "stderr": ""
+      },
+      "seconds": 0.515
+    },
+    "verification": {
+      "passed": true,
+      "build": {
+        "argv": [
+          "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.venv\\Scripts\\python.exe",
+          "-m",
+          "compileall",
+          "-q",
+          "examples"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "tests": {
+        "argv": [
+          "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "examples/tests",
+          "-p",
+          "no:cacheprovider"
+        ],
+        "exit_code": 0,
+        "stdout": "..                                                                       [100%]\n2 passed in 0.01s\n",
+        "stderr": ""
+      },
+      "seconds": 0.452
+    },
+    "changed_files": [
+      "examples/repair_service.py"
+    ],
+    "commit": "480edc48d89f9ccf73cb71d6d2891ac2383d332f",
+    "pr_url": "https://github.com/Ethan071711/AIops-agent/pull/1",
+    "explanation": "原代码未对请求历史进行长度限制，导致请求历史无边界增长，违反了64条请求的预期限制。修复方式是在remember_request函数中添加长度检查，当历史长度超过64时，移除最旧的请求，从而实现历史的有界性。"
+  },
+  "errors": [],
+  "paid_api_calls": 0,
+  "duration_seconds": 45.489,
+  "trace_path": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\capstone\\runs\\7378f85904e94d4d8791194b6da8cdb4\\trace.jsonl",
+  "measured_at_utc": "2026-10-24T02:22:24.566765+00:00",
+  "observed_before_entries": 1000,
+  "observed_after_entries": 64,
+  "samples_processed": 1000,
+  "original_source_modified": false,
+  "provenance": "New actual sample-workload run; not historic internship metrics",
+  "trace_artifact": "capstone_trace_20261024.jsonl"
+}

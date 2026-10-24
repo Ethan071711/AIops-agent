@@ -20,7 +20,7 @@ from examples.observations import Observations
 async def evaluate():
     cases=json.loads((ROOT/'eval/cases.json').read_text(encoding='utf-8'))['cases']
     fixture=Observations(cases).start()
-    state=ROOT/'.storage/benchmark'
+    state=ROOT/'.storage/benchmark'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')
     state.mkdir(parents=True,exist_ok=True)
     settings=Settings(workspace=state,source_repo=ROOT,target_url=str(ROOT),
         kubectl=os.getenv('AIOPS_KUBECTL','kubectl'),kubeconfig=fixture.kubeconfig(state/'kubeconfig.json'),allow_restart=True)

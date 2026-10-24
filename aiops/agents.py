@@ -13,6 +13,31 @@ from .schema import Diagnosis,Patch
 from .tools import SPECS,command
 
 
+def current_services(evidence):
+    services=set()
+    def walk(value):
+        if isinstance(value,dict):
+            for key,item in value.items():
+                if key in {'service','serviceName','service_name'} and isinstance(item,str):
+                    services.add(item)
+                walk(item)
+        elif isinstance(value,list):
+            for item in value:
+                walk(item)
+    for value in evidence.values():
+        if value['tool'] not in {'get_metrics','get_traces'}:
+            continue
+        text=value['result'].get('stdout','')
+        try:
+            payload=json.loads(text)
+            walk(payload)
+            if value['tool']=='get_metrics' and isinstance(payload,dict):
+                services.update(k for k,v in payload.items() if isinstance(v,dict) and k not in {'error','metadata'})
+        except json.JSONDecodeError:
+            services.update(re.findall(r'(?:service|service_name)="([A-Za-z0-9_.-]+)"',text))
+    return services
+
+
 class DiagnosisAgent:
     def __init__(self,model):
         self.model=model
@@ -26,7 +51,12 @@ class DiagnosisAgent:
                 '证据ID必须来自实际工具返回。无法定位时root_service写unknown、confidence低于0.6。'
                 '代码缺陷用code_fix；需要线上操作用online_op；仅信息或未知问题用info_only。'
                 'online_op的action格式为{"operation":"restart","deployment":"具体服务"}，'
-                '其他操作如flush_redis/drop_database/scale用相应operation并交人工，禁止调用变更工具。')
+                '其他操作如flush_redis/drop_database/scale用相应operation并交人工，禁止调用变更工具。'
+                '历史处理结果不表示当前已经修复，始终以本次metrics和traces为准。'
+                '当前仍存在的源码缺陷必须标为code_fix；无状态线程卡死且可重启应标为online_op；'
+                'info_only只用于已恢复、外部依赖异常或无操作必要的报告，不用于回避修复。'
+                '只需提出线上动作，由程序安全策略判断是否放行，不要因为不能亲自调用变更工具就改成info_only。'
+                f'本次配置允许自动重启={tools.settings.allow_restart}，允许的无状态部署={tools.settings.restartable_deployments}。')
         messages=[{'role':'system','content':system},{'role':'user','content':alert.model_dump_json()}]
         for _ in range(max_rounds):
             reply=self.model.chat(messages,SPECS)
@@ -41,6 +71,15 @@ class DiagnosisAgent:
                 if any(v['result'].get('exit_code',0)!=0 for k,v in tools.evidence.items()
                        if k in diagnosis.evidence_ids and v['tool'] in {'get_metrics','get_traces'}):
                     raise ValueError('Unavailable observations cannot confirm a diagnosis')
+                services=current_services(tools.evidence)
+                if not services:
+                    diagnosis=diagnosis.model_copy(update={'root_service':'unknown','confidence':0.0,
+                        'remediation_type':'info_only','action':None})
+                elif diagnosis.root_service!='unknown' and diagnosis.root_service not in services:
+                    messages.extend([{'role':'assistant','content':reply['content']},
+                        {'role':'user','content':'校验未通过：根因服务不在本次指标/调用链的服务名单中。'
+                         '只能依据本次证据重做诊断，不能把历史服务当作当前服务。当前观测到：'+json.dumps(sorted(services))}])
+                    continue
                 return diagnosis
             messages.append({'role':'assistant','content':'','tool_calls':[
                 {'type':'function','function':{'name':c['name'],'arguments':c['arguments']}} for c in calls[:4]]})
@@ -59,6 +98,8 @@ class RepairAgent:
 
     def run(self,run_id,diagnosis):
         settings=self.settings
+        if diagnosis.root_service not in settings.repair_services:
+            raise PermissionError('Diagnosed service is not bound to this configured repair repository')
         expected=f'https://github.com/{settings.owner}/{settings.repository}.git'
         if settings.target_url!=expected and not Path(settings.target_url).is_dir():
             raise PermissionError('Repair target must be the configured owner repository or a local test repository')
@@ -79,14 +120,23 @@ class RepairAgent:
         if baseline['passed']:
             return {'status':'no_reproduced_failure','baseline':baseline,'pr_url':None}
         self.hook.check('repair','read_repo',{})
-        source={p:(directory/p).read_text(encoding='utf-8') for p in settings.allowed_files}
-        prompt=('你是代码修复Agent。仅修改允许的源文件，保留原接口，修复当前测试失败。不得修改测试、配置、依赖或添加I/O。'
-                '只输出JSON：{"explanation":"修复原因","changes":[{"path":"文件相对路径","old":"完整且唯一的原片段","new":"替换片段"}]}。'
-                'old必须与提供源码严格匹配。\n诊断：'+diagnosis.model_dump_json()+'\n源码：'+json.dumps(source,ensure_ascii=False)
-                +'\n构建/测试失败：'+json.dumps(baseline,ensure_ascii=False))
-        patch=Patch.model_validate(self.model.patch(prompt))
-        self.hook.check('repair','apply_patch',{'paths':[c.path for c in patch.changes]})
-        apply_changes(directory,patch,settings.allowed_files)
+        feedback=''
+        for attempt in range(2):
+            source={p:(directory/p).read_text(encoding='utf-8') for p in settings.allowed_files}
+            prompt=('你是代码修复Agent。仅修改允许的源文件，保留原接口，修复当前测试失败。不得修改测试、配置、依赖或添加I/O。'
+                    '只输出JSON：{"explanation":"修复原因","changes":[{"path":"文件相对路径","old":"完整且唯一的原片段","new":"替换片段"}]}。'
+                    'old必须与提供源码严格匹配，包括空格和换行。\n诊断：'+diagnosis.model_dump_json()+'\n源码：'+json.dumps(source,ensure_ascii=False)
+                    +'\n构建/测试失败：'+json.dumps(baseline,ensure_ascii=False)+'\n上次格式错误：'+feedback)
+            try:
+                patch=Patch.model_validate(self.model.patch(prompt))
+                self.hook.check('repair','apply_patch',{'paths':[c.path for c in patch.changes]})
+                apply_changes(directory,patch,settings.allowed_files)
+                break
+            except ValueError as error:
+                feedback=str(error)[:500]
+                self.emit('patch_rejected',{'attempt':attempt+1,'reason':feedback})
+                if attempt==1:
+                    raise
         self.emit('patch',patch.model_dump())
         checks=self.check(directory)
         self.emit('verification',checks)
