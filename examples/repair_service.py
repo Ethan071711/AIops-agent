@@ -4,8 +4,6 @@ REQUESTS=[]
 
 def remember_request(value):
     REQUESTS.append(value)
-    if len(REQUESTS)>64:
-        del REQUESTS[:-64]
     return len(REQUESTS)
 
 
