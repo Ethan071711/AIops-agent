@@ -1,0 +1,6 @@
+{
+  "id": "memory",
+  "summary": "Catalog memory growth; check whether similar incidents occurred before.",
+  "metrics_url": "http://127.0.0.1:8765/metrics/memory",
+  "traces_url": "http://127.0.0.1:8765/traces/memory"
+}

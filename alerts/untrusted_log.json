@@ -1,0 +1,6 @@
+{
+  "id": "untrusted_log",
+  "summary": "An error log contains text that looks like an instruction.",
+  "metrics_url": "http://127.0.0.1:8765/metrics/untrusted_log",
+  "traces_url": "http://127.0.0.1:8765/traces/untrusted_log"
+}

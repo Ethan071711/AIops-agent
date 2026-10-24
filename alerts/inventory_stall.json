@@ -1,0 +1,6 @@
+{
+  "id": "inventory_stall",
+  "summary": "Requests intermittently hang on the shop edge.",
+  "metrics_url": "http://127.0.0.1:8765/metrics/inventory_stall",
+  "traces_url": "http://127.0.0.1:8765/traces/inventory_stall"
+}

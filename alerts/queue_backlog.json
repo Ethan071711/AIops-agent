@@ -1,0 +1,6 @@
+{
+  "id": "queue_backlog",
+  "summary": "Background order processing is delayed.",
+  "metrics_url": "http://127.0.0.1:8765/metrics/queue_backlog",
+  "traces_url": "http://127.0.0.1:8765/traces/queue_backlog"
+}

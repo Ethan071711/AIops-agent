@@ -1,0 +1,6 @@
+{
+  "id": "dns",
+  "summary": "Service-to-service name resolution failed.",
+  "metrics_url": "http://127.0.0.1:8765/metrics/dns",
+  "traces_url": "http://127.0.0.1:8765/traces/dns"
+}
