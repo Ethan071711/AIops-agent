@@ -1,0 +1,114 @@
+{
+  "measured_at_utc": "2026-10-24T10:45:26.853723+00:00",
+  "server_version": "v1.37.1+k3s1",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "cluster_backend": "actual Linux K3s/containerd, real Deployments/Pods/Service/RBAC; no Kubernetes API fixture",
+  "workload_scope": "Controlled test applications; inventory worker is intentionally stopped once, payments is marked stateful.",
+  "rbac": {
+    "inventory_patch": "yes",
+    "payments_patch": "no",
+    "namespace_delete": "no"
+  },
+  "initial_measurements": {
+    "inventory": {
+      "inventory": {
+        "up": 1,
+        "stateful": false,
+        "worker_pid": 10,
+        "worker_state": "T",
+        "processed_total": 157,
+        "completed_requests_delta": 0,
+        "measurement": "actual container process"
+      }
+    },
+    "payments": {
+      "payments": {
+        "up": 1,
+        "stateful": true,
+        "worker_pid": 10,
+        "worker_state": "T",
+        "processed_total": 1,
+        "completed_requests_delta": 0,
+        "measurement": "actual container process"
+      }
+    }
+  },
+  "low_risk_result": {
+    "run_id": "651758907ff642049edb868a33b289f8",
+    "alert_id": "real-k3s-inventory-stall",
+    "diagnosis": {
+      "root_service": "inventory",
+      "cause": "Inventory worker process is stopped and makes no progress after a controlled runtime suspension, as indicated by the trace evidence. The worker state is 'T' (stopped), and no completed requests are being processed, despite having a non-zero processed_total. No prior similar incidents were found in the historical records.",
+      "remediation_type": "online_op",
+      "confidence": 0.95,
+      "evidence_ids": [
+        "e1",
+        "e2"
+      ],
+      "action": {
+        "operation": "restart",
+        "deployment": "inventory"
+      }
+    },
+    "route": "auto_remediated",
+    "fix": null,
+    "errors": [],
+    "paid_api_calls": 0,
+    "duration_seconds": 21.275,
+    "trace_path": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\kubernetes\\20261024T104452\\runs\\651758907ff642049edb868a33b289f8\\trace.jsonl"
+  },
+  "observed_recovery_seconds": 23.104,
+  "recovery_observations": {
+    "inventory": {
+      "up": 1,
+      "stateful": false,
+      "worker_pid": 10,
+      "worker_state": "S",
+      "processed_total": 2,
+      "completed_requests_delta": 1,
+      "measurement": "actual container process"
+    }
+  },
+  "inventory_pods_before": [
+    "94dcc54d-802d-4af4-a30c-811bdde004a2"
+  ],
+  "inventory_pods_after": [
+    "be7e256d-75ec-4e55-867d-45babf37814e"
+  ],
+  "rollout_status": "Waiting for deployment \"inventory\" rollout to finish: 1 old replicas are pending termination...\nWaiting for deployment \"inventory\" rollout to finish: 1 old replicas are pending termination...\ndeployment \"inventory\" successfully rolled out",
+  "high_risk_result": {
+    "run_id": "3839847859da422c8fa3489eccd409bf",
+    "alert_id": "real-k3s-stateful-stall",
+    "diagnosis": {
+      "root_service": "payments",
+      "cause": "Payment worker process is stopped and makes no progress after a controlled runtime suspension, as indicated by the trace evidence. The worker state is 'T' (stopped), and no completed requests are being processed, despite having a non-zero processed_total. This is consistent with a known pattern observed in a prior incident involving inventory workers.",
+      "remediation_type": "online_op",
+      "confidence": 0.9,
+      "evidence_ids": [
+        "e1",
+        "e2",
+        "e3"
+      ],
+      "action": {
+        "operation": "restart",
+        "deployment": "payments"
+      }
+    },
+    "route": "needs_review",
+    "fix": null,
+    "errors": [],
+    "paid_api_calls": 0,
+    "review": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\kubernetes\\20261024T104452\\reviews\\4d2615b779d9468a85a40b1097a2ec69.json",
+    "duration_seconds": 10.184,
+    "trace_path": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\kubernetes\\20261024T104452\\runs\\3839847859da422c8fa3489eccd409bf\\trace.jsonl"
+  },
+  "human_review_status": "pending",
+  "high_risk_kubectl_action_executed": false,
+  "payments_pods_unchanged": true,
+  "paid_api_calls": 0,
+  "limitations": [
+    "Single-node controlled validation, not a production cluster or a high-availability/load test.",
+    "Observed recovery seconds measure this injected worker fault only, not historical production MTTR.",
+    "Kubeconfig, tokens and SSH private keys are excluded from the repository and result artifacts."
+  ]
+}

@@ -164,6 +164,8 @@ def test_completed_diagnosis_is_saved_even_when_repair_fails(settings,tmp_path,m
             self.calls+=1
             if self.calls==1:
                 return {'content':'','tool_calls':[{'name':'get_metrics','arguments':{}},{'name':'get_traces','arguments':{}}]}
+            if self.calls>2:
+                return {'content':json.dumps({'remediation_type':'code_fix','action':None,'reason':'Per-request retention defect'}),'tool_calls':[]}
             return {'content':diagnosis().model_dump_json(),'tool_calls':[]}
     def fail(*args):
         raise ValueError('injected repair failure')
@@ -176,6 +178,40 @@ def test_completed_diagnosis_is_saved_even_when_repair_fails(settings,tmp_path,m
         assert memory.search('cache growing')[0]['id']==result['run_id']
     finally:
         memory.close();fixture.close()
+
+
+def test_missing_current_evidence_produces_a_persistable_unknown_diagnosis(settings):
+    class Model:
+        def chat(self,*args):
+            return {'content':'Observations unavailable.','tool_calls':[]}
+    class Tools:
+        evidence={'e1':{'tool':'get_metrics','result':{'stdout':'{"error":"unavailable"}'}},
+                  'e2':{'tool':'get_traces','result':{'stdout':'{"spans":[]}'}}}
+    tools=Tools();tools.settings=settings
+    alert=Alert(id='test',summary='No current observations',metrics_url='http://localhost',traces_url='http://localhost')
+    result=asyncio.run(DiagnosisAgent(Model()).run(alert,tools))
+    assert result.root_service=='unknown' and result.confidence==0
+    assert result.remediation_type=='info_only' and result.evidence_ids==['e1','e2']
+
+
+def test_history_cannot_supply_the_current_remediation_classification(settings):
+    class Model:
+        def chat(self,messages):
+            context=json.dumps(messages)
+            assert 'CURRENT_LOCK' in context and 'HISTORY_ONLY_POISON' not in context
+            assert 'source change' in context
+            return {'content':json.dumps({'remediation_type':'online_op',
+                'action':{'operation':'review_session_locks'},'reason':'Current local sessions are blocked'})}
+    class Tools:
+        evidence={'e1':{'tool':'get_metrics','result':{'stdout':'{"orders":{"blocked_sessions":3}}'}},
+                  'e2':{'tool':'get_traces','result':{'stdout':'{"service":"orders","error":"CURRENT_LOCK"}'}},
+                  'e3':{'tool':'search_past_incidents','result':{'stdout':'HISTORY_ONLY_POISON'}}}
+        emit=staticmethod(lambda *args:None)
+    tools=Tools();tools.settings=settings
+    initial=diagnosis().model_copy(update={'root_service':'orders'})
+    result=DiagnosisAgent(Model()).classify(initial,tools)
+    assert result.root_service=='orders' and result.remediation_type=='online_op'
+    assert result.evidence_ids==initial.evidence_ids
 
 
 def fixture_repo(tmp_path):

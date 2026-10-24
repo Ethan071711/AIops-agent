@@ -1,0 +1,241 @@
+# Controlled validation workloads. The worker is intentionally stopped on first
+# start; this is not a production application or customer incident.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aiops-demo
+  labels:
+    purpose: aiops-controlled-validation
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: controlled-worker
+  namespace: aiops-demo
+data:
+  start.sh: |
+    #!/bin/sh
+    set -eu
+    mkdir -p /www/cgi-bin
+    cp /scripts/metrics /scripts/traces /scripts/health /www/cgi-bin/
+    chmod 755 /www/cgi-bin/*
+    printf '%s' "$APP_SERVICE" >/tmp/service
+    printf '%s' "$APP_STATEFUL" >/tmp/stateful
+    echo 0 >/tmp/processed
+    (
+      while :; do
+        count=$(cat /tmp/processed)
+        echo $((count+1)) >/tmp/processed
+        sleep 1
+      done
+    ) &
+    echo $! >/tmp/worker.pid
+    if [ "$STALL_MODE" = always ] || [ ! -f /state/started ]; then
+      touch /state/started
+      kill -STOP "$(cat /tmp/worker.pid)"
+    fi
+    printf 'Controlled worker validation workload\n' >/www/index.html
+    exec httpd -f -p 8080 -h /www
+  metrics: |
+    #!/bin/sh
+    service=$(cat /tmp/service)
+    stateful=$(cat /tmp/stateful)
+    pid=$(cat /tmp/worker.pid)
+    state=$(sed -n 's/^State:[[:space:]]*\([A-Z]\).*/\1/p' /proc/$pid/status)
+    before=$(cat /tmp/processed)
+    sleep 1
+    after=$(cat /tmp/processed)
+    printf 'Content-Type: application/json\r\nCache-Control: no-store\r\n\r\n'
+    printf '{"%s":{"up":1,"stateful":%s,"worker_pid":%s,"worker_state":"%s","processed_total":%s,"completed_requests_delta":%s,"measurement":"actual container process"}}\n' "$service" "$stateful" "$pid" "$state" "$after" "$((after-before))"
+  traces: |
+    #!/bin/sh
+    service=$(cat /tmp/service)
+    pid=$(cat /tmp/worker.pid)
+    state=$(sed -n 's/^State:[[:space:]]*\([A-Z]\).*/\1/p' /proc/$pid/status)
+    printf 'Content-Type: application/json\r\nCache-Control: no-store\r\n\r\n'
+    if [ "$state" = T ]; then
+      printf '{"spans":[{"service":"%s","worker_state":"T","error":"Worker process is stopped and makes no progress after a controlled runtime suspension."}]}\n' "$service"
+    else
+      printf '{"spans":[{"service":"%s","status":"OK","event":"Worker process is running and processing events."}]}\n' "$service"
+    fi
+  health: |
+    #!/bin/sh
+    pid=$(cat /tmp/worker.pid)
+    state=$(sed -n 's/^State:[[:space:]]*\([A-Z]\).*/\1/p' /proc/$pid/status)
+    if [ "$state" = T ]; then
+      printf 'Status: 503 Service Unavailable\r\n'
+    fi
+    printf 'Content-Type: application/json\r\nCache-Control: no-store\r\n\r\n'
+    printf '{"worker_state":"%s","processed_total":%s}\n' "$state" "$(cat /tmp/processed)"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+  namespace: aiops-demo
+  labels:
+    verification-only: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory
+  template:
+    metadata:
+      labels:
+        app: inventory
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: worker
+          image: docker.io/library/busybox@sha256:66a6306db78bf2dbf3487f293aa8d6990d8e506fdffab9cc43fe422becf886e4
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/scripts/start.sh"]
+          env:
+            - name: APP_SERVICE
+              value: inventory
+            - name: APP_STATEFUL
+              value: "false"
+            - name: STALL_MODE
+              value: once
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 8Mi
+            limits:
+              memory: 64Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: marker
+              mountPath: /state
+      volumes:
+        - name: scripts
+          configMap:
+            name: controlled-worker
+        - name: marker
+          hostPath:
+            path: /var/lib/aiops-demo/inventory
+            type: DirectoryOrCreate
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments
+  namespace: aiops-demo
+  labels:
+    verification-only: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments
+  template:
+    metadata:
+      labels:
+        app: payments
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: worker
+          image: docker.io/library/busybox@sha256:66a6306db78bf2dbf3487f293aa8d6990d8e506fdffab9cc43fe422becf886e4
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/scripts/start.sh"]
+          env:
+            - name: APP_SERVICE
+              value: payments
+            - name: APP_STATEFUL
+              value: "true"
+            - name: STALL_MODE
+              value: always
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 8Mi
+            limits:
+              memory: 64Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: marker
+              mountPath: /state
+      volumes:
+        - name: scripts
+          configMap:
+            name: controlled-worker
+        - name: marker
+          hostPath:
+            path: /var/lib/aiops-demo/payments
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory
+  namespace: aiops-demo
+spec:
+  type: NodePort
+  selector:
+    app: inventory
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments
+  namespace: aiops-demo
+spec:
+  type: NodePort
+  selector:
+    app: payments
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30081
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aiops-agent
+  namespace: aiops-demo
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: aiops-agent
+  namespace: aiops-demo
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["inventory", "worker"]
+    verbs: ["patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aiops-agent
+  namespace: aiops-demo
+subjects:
+  - kind: ServiceAccount
+    name: aiops-agent
+    namespace: aiops-demo
+roleRef:
+  kind: Role
+  name: aiops-agent
+  apiGroup: rbac.authorization.k8s.io

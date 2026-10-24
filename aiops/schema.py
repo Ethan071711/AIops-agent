@@ -22,6 +22,13 @@ class Diagnosis(BaseModel):
     action: dict | None = None
 
 
+class Disposition(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    remediation_type: Literal['code_fix','online_op','info_only']
+    action: dict | None = None
+    reason: str = Field(min_length=2,max_length=1500)
+
+
 class Change(BaseModel):
     model_config = ConfigDict(extra='forbid')
     path: str

@@ -16,6 +16,7 @@
 - 诊断只允许 get/describe/top/logs 形式的 kubectl、固定观测 URL 的 curl GET 和只读 git。
 - 自动线上变更默认关闭；明确启用后，还须本次结构化指标明确提供该服务的 `stateful: false`，才允许指定上下文/命名空间内 `inventory`、`worker` 的重启。未知状态、有状态服务及其他操作生成持久审核请求。
 - 根因服务要与当前指标/调用链对应，历史工单不能替换当前服务；自动重启目标必须等于该根因服务。当前修复仓库只绑定 `catalog`，其他服务的代码修复转人工，避免改错仓库。
+- 处理类型由诊断 Agent 单独复核，只读取当前观测及绑定服务的代码证据；历史处理方式不进入这一步。资源压力不能直接推断为源码缺陷，外部依赖调查也不等于本服务需要重启。缺失服务证据时生成可保存的 `unknown` 诊断并转人工。
 - 修复只能改配置允许的样例源文件；不能改测试、依赖、工作流或执行任意 shell。源码补丁检查导入、反射和 I/O，构建与测试均通过才能提交分支和 PR；不会自动合并。
 - Milvus 保存每次已形成的诊断，包括后续修复失败的情况；重启时重新加载集合。MCP 使用官方 Python SDK 的内存传输和 ClientSession 执行工具调用。
 - 本地 `Qwen/Qwen3-4B-Instruct-2507` 实际选择工具与生成诊断/补丁；BGE 用于历史记录检索。没有付费 API 调用。
@@ -56,6 +57,8 @@ git worktree add --track -b demo/fault-injected .storage/fault-branch origin/dem
 # 13 个新场景、共 23 次运行；需要 git、curl 和 kubectl
 $env:AIOPS_KUBECTL = '你的 kubectl.exe 路径'
 .\.venv\Scripts\python.exe scripts/benchmark.py
+# 新增分类检查；用例用于开发反馈，不作为独立泛化测试
+.\.venv\Scripts\python.exe scripts/evaluate_classification.py
 # 单独验证真实样例故障、构建测试与自动提 PR
 .\.venv\Scripts\python.exe scripts/capstone.py
 ```
@@ -66,15 +69,42 @@ $env:AIOPS_KUBECTL = '你的 kubectl.exe 路径'
 
 | 验证 | 结果与原始记录 |
 |---|---|
-| 单元与集成测试 | 25 项通过，含真实 Milvus 持久化重开、官方 MCP 会话、权限校验及隔离克隆中的失败/通过测试门禁：[XML](results/unit_20261024.xml) |
+| 单元与集成测试 | 27 项通过，含真实 Milvus 持久化重开、官方 MCP 会话、历史信息隔离、缺证据处理、权限校验及隔离克隆中的失败/通过测试门禁：[XML](results/unit_20261024.xml) |
 | 真实样例代码修复 | 连续处理 1,000 个请求，缓存由错误的 1,000 条恢复为最多 64 条；失败测试复现后，补丁编译与 2 项样例测试通过，自动创建 [PR #1](https://github.com/Ethan071711/AIops-agent/pull/1)，保持待审未合并：[结果](results/capstone_20261024.json)、[原始 Trace](results/capstone_trace_20261024.jsonl) |
-| 13 场景 / 23 次本地模型回归 | 服务定位 20/23（86.96%），处理类型分类 13/23（56.52%），最终路由 20/23（86.96%）；平均运行 16.345 秒，属于本地功能回归耗时：[逐次结果](results/regression_20261024.json) |
+| 13 场景 / 23 次本地模型回归 | 修正后服务定位、处理类型分类、最终路由均为 23/23；原 13 场景及预期标签保持原样。平均运行 10.575 秒，属于本地功能回归耗时：[逐次结果](results/regression_20261024.json) |
+| 新增 11 条分类检查 | 11/11，覆盖其他服务名与表述；仅检查分类，服务身份预先给定。这些检查参与过开发反馈，不是未使用过的留出集：[用例](eval/classification_checks.jsonl)、[结果](results/classification_checks_20261024.json) |
+| 真实 K3s / containerd 联调 | `v1.37.1+k3s1` 单节点实际运行样例 Pod。Agent 重启后 Pod UID 更换，工作进程由停滞恢复处理，健康检查从 503 变为 200；本次观测恢复耗时 23.104 秒。有状态服务进入待审，Pod 保持不变；受限账号不能修改该服务或删除命名空间：[结果](results/kubernetes_live_20261024.json)、[放行 Trace](results/kubernetes_low_risk_trace_20261024.jsonl)、[拦截 Trace](results/kubernetes_high_risk_trace_20261024.jsonl) |
 
 该次 PR 运行保留了历史查询失败的降级事件；集合启动加载问题随后已修正，持久化重开查询由上述集成测试单独验证。
 
-模型仍有处理类型误判和过度转人工的情况，不能将上述单元测试通过理解为模型判断全部正确。本次回归发出的 7 次 Kubernetes PATCH 均对应明确无状态的白名单场景，Kafka 偏移异常等未知风险进入人工审核。
+初版分类为 13/23（56.52%），原记录保留在 [之前的提交](https://github.com/Ethan071711/AIops-agent/blob/622e3a5f2a1e05ebc27cf6352b5e49ed9c22d013/results/regression_20261024.json)。本次修正了历史记录对分类的干扰及缺失证据时直接报错的问题。小型合成回归与新增检查通过，不能推断模型在任意真实告警上都判断正确。13 场景回归中的 7 次 Kubernetes PATCH 均对应明确无状态的白名单场景，Kafka 偏移异常等未知风险进入人工审核。
 
-观测/Kubernetes API 测试服务是显式的 fixture；真实 curl、git、kubectl 客户端、MCP/Milvus 与构建测试会执行，但它不是生产 Kubernetes 集群。回归运行时长不等于生产故障恢复时长，未做人工 30–60 分钟对照实验。
+13 场景回归的观测/Kubernetes API 服务是显式的 fixture；真实 curl、git、kubectl 客户端、MCP/Milvus 与构建测试会执行。另一次 K3s 联调使用实际 Linux 虚拟机、containerd 与 Kubernetes 控制器，故障由样例工作进程的受控暂停产生。两者均为测试，未验证生产高可用或业务负载；运行与恢复耗时也不替代历史生产 MTTR，未做人工 30–60 分钟对照实验。
+
+## 复现真实集群验证
+
+在专用测试集群应用 [样例清单](examples/kubernetes.yaml)。它创建 `aiops-demo` 命名空间内的受控工作进程、Service 和受限 ServiceAccount；`inventory` 首次启动暂停工作进程，`payments` 标记为有状态。hostPath 仅保存测试标记，应在可丢弃的测试节点上使用。
+
+管理员负责应用清单，签发清单中 ServiceAccount 的短期 kubeconfig，并将两个 Service 映射到本机回环地址。Agent 的 kubeconfig context 必须为 `aiops-demo`，令牌和文件放在 `.storage/`。本次使用虚拟机 NodePort 转发；已有测试集群也可在两个终端分别转发：
+
+```powershell
+kubectl --context YOUR_TEST_ADMIN -n aiops-demo port-forward service/inventory 18088:8080
+kubectl --context YOUR_TEST_ADMIN -n aiops-demo port-forward service/payments 18090:8080
+```
+
+然后运行：
+
+```powershell
+$env:AIOPS_KUBECONFIG = '.storage/k3s/kubeconfig.json'
+$env:AIOPS_KUBECTL = '你的 kubectl.exe 路径'
+.\.venv\Scripts\python.exe scripts/verify_kubernetes.py
+```
+
+脚本先核验部署的 `verification-only: true` 标签和 RBAC，再运行实际 Agent，等待替换 Pod 与工作进程恢复，并确认高风险操作没有执行。它要求初始工作进程停滞。重复验证前，可由测试管理员重新暂停 `inventory` 的样例工作进程：
+
+```powershell
+kubectl --context YOUR_TEST_ADMIN -n aiops-demo exec deployment/inventory -- sh -c 'kill -STOP "$(cat /tmp/worker.pid)"'
+```
 
 代码入口：`aiops/workflow.py`；两个 Agent：`aiops/agents.py`；安全门禁：`aiops/policy.py`；记忆/MCP：`aiops/memory.py`。本项目保留必要的命令行输出、事件记录和回归数据，没有附加通知平台或网页看板。
 
