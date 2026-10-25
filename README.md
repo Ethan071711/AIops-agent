@@ -87,6 +87,26 @@ $env:AIOPS_KUBECTL = '你的 kubectl.exe 路径'
 
 13 场景回归的观测/Kubernetes API 服务是显式的 fixture；真实 curl、git、kubectl 客户端、MCP/Milvus 与构建测试会执行。另一次 K3s 联调使用实际 Linux 虚拟机、containerd 与 Kubernetes 控制器，故障由样例工作进程的受控暂停产生。两者均为测试，未验证生产高可用或业务负载；运行与恢复耗时也不替代历史生产 MTTR，未做人工 30–60 分钟对照实验。
 
+
+## 可复算的指标与重复恢复验证
+
+2026-10-25 增加 [统计脚本](scripts/report_metrics.py)，直接读取已保存的预测、预期标签和 Trace 复算，不设目标分数。原 13 类合成观测、23 次回归的服务标签、处置类型和路由均为 23/23；其中已知服务定位为 20/20，另 3 次预期为 unknown。这个指标不评价根因说明全文是否正确，也不是生产告警准确率。
+
+另在真实单节点 K3s 上执行三次可恢复工作进程暂停及一次持续故障：[逐次结果](results/recovery_trials_20261025.json)、[汇总](results/metrics_20261025.json)。从每轮告警 Trace 的起点到主流程同时确认部署就绪、HTTP 200，三次分别为 20.979、11.638、11.239 秒，平均 14.619 秒，中位数 11.638 秒。第一轮包含生成模型冷加载；另外独立确认 Pod 已更换、工作进度恢复。
+
+持续故障那一轮重启被接受、Pod 更换，但仍 HTTP 503；主流程在配置的 30 秒恢复验收期限后转人工。从告警开始的观测总时长为 39.464 秒。该轮的恢复时间为空，既未当成零，也未混入成功恢复均值。这些是指定测试工作负载的测量，不能写成生产 MTTR 或与人工 30–60 分钟相比的提升。
+
+```powershell
+# 汇总已有证据，不需要启动模型或集群
+.\.venv\Scripts\python.exe scripts/report_metrics.py
+# 新做重复验证：专用、已标 verification-only 的 inventory 测试部署
+$env:AIOPS_TEST_ADMIN_KUBECONFIG = '专用测试管理员配置路径'
+$env:AIOPS_KUBECONFIG = '受限 aiops-agent 配置路径'
+.\.venv\Scripts\python.exe scripts/verify_recovery_trials.py
+```
+
+测试驱动使用专用管理员身份对已标记的样例进程注入暂停，Agent 全程使用另一份受限凭据；结束后恢复样例工作负载。45 项测试通过，新增指标分母、超时处理和确认时间点检查：[XML](results/unit_20261025_metrics.xml)。
+
 ## 复现真实集群验证
 
 在专用测试集群应用 [样例清单](examples/kubernetes.yaml)。它创建 `aiops-demo` 命名空间内的受控工作进程、Service 和受限 ServiceAccount；`inventory` 首次启动暂停工作进程，`payments` 标记为有状态。hostPath 仅保存测试标记，应在可丢弃的测试节点上使用。

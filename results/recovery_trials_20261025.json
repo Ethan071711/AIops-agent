@@ -1,0 +1,260 @@
+{
+  "measured_at_utc": "2026-10-25T06:26:48.156866+00:00",
+  "cluster_backend": "actual Linux K3s/containerd; verification-only inventory deployment",
+  "model": "Qwen/Qwen3-4B-Instruct-2507",
+  "trials": [
+    {
+      "id": "trial-1",
+      "expect_recovered": true,
+      "injected_mode": "once",
+      "cold_model": true,
+      "result": {
+        "run_id": "44b59314661c4d329eece779dca71d6a",
+        "alert_id": "recovery-trial-1",
+        "diagnosis": {
+          "root_service": "inventory",
+          "cause": "Inventory worker is in a stopped state ('T') with no progress on completed requests, as indicated by metrics showing zero delta in completed_requests_delta and traces showing 'Worker process is stopped and makes no progress after a controlled runtime suspension.'",
+          "remediation_type": "online_op",
+          "confidence": 0.95,
+          "evidence_ids": [
+            "e1",
+            "e2"
+          ],
+          "action": {
+            "operation": "restart",
+            "deployment": "inventory"
+          }
+        },
+        "route": "auto_remediated",
+        "fix": null,
+        "errors": [],
+        "paid_api_calls": 0,
+        "recovery": {
+          "recovered": true,
+          "checks": 3,
+          "last_check": {
+            "attempt": 3,
+            "rollout_ready": true,
+            "health_status": 200,
+            "deployment": {
+              "metadata.generation": 13,
+              "status.observedGeneration": 13,
+              "spec.replicas": 1,
+              "status.replicas": 1,
+              "status.updatedReplicas": 1,
+              "status.readyReplicas": 1,
+              "status.availableReplicas": 1
+            }
+          },
+          "elapsed_seconds": 2.282
+        },
+        "duration_seconds": 21.868,
+        "trace_path": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\recovery-trials\\20261025T062515\\runs\\44b59314661c4d329eece779dca71d6a\\trace.jsonl"
+      },
+      "alert_to_health_verified_seconds": 20.979,
+      "observed_seconds": 22.991,
+      "worker_progress_restored": true,
+      "health_status": 200,
+      "pod_replaced": true,
+      "trace_artifact": "results/recovery_trial_1_20261025.jsonl",
+      "trace_sha256": "f7c19be459b65307eb79316764e3f02f0e1582ddf2a1026ea8cd54209720d899"
+    },
+    {
+      "id": "trial-2",
+      "expect_recovered": true,
+      "injected_mode": "once",
+      "cold_model": false,
+      "result": {
+        "run_id": "b17db8b963de41b3b3570991f13adc0e",
+        "alert_id": "recovery-trial-2",
+        "diagnosis": {
+          "root_service": "inventory",
+          "cause": "Inventory worker is in a stopped state ('T') with no progress on completed requests, as indicated by metrics showing zero completed_requests_delta and traces showing an error message about the worker process being stopped after suspension.",
+          "remediation_type": "online_op",
+          "confidence": 0.95,
+          "evidence_ids": [
+            "e1",
+            "e2"
+          ],
+          "action": {
+            "operation": "restart",
+            "deployment": "inventory"
+          }
+        },
+        "route": "auto_remediated",
+        "fix": null,
+        "errors": [],
+        "paid_api_calls": 0,
+        "recovery": {
+          "recovered": true,
+          "checks": 3,
+          "last_check": {
+            "attempt": 3,
+            "rollout_ready": true,
+            "health_status": 200,
+            "deployment": {
+              "metadata.generation": 14,
+              "status.observedGeneration": 14,
+              "spec.replicas": 1,
+              "status.replicas": 1,
+              "status.updatedReplicas": 1,
+              "status.readyReplicas": 1,
+              "status.availableReplicas": 1
+            }
+          },
+          "elapsed_seconds": 2.263
+        },
+        "duration_seconds": 11.651,
+        "trace_path": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\recovery-trials\\20261025T062515\\runs\\b17db8b963de41b3b3570991f13adc0e\\trace.jsonl"
+      },
+      "alert_to_health_verified_seconds": 11.638,
+      "observed_seconds": 12.749,
+      "worker_progress_restored": true,
+      "health_status": 200,
+      "pod_replaced": true,
+      "trace_artifact": "results/recovery_trial_2_20261025.jsonl",
+      "trace_sha256": "998edc826e5a02a10e3722488ba9df1fe92f7ecf7ddba2b4851a4a32128d4da6"
+    },
+    {
+      "id": "trial-3",
+      "expect_recovered": true,
+      "injected_mode": "once",
+      "cold_model": false,
+      "result": {
+        "run_id": "1fb7bd179a85431990e9e684031ba671",
+        "alert_id": "recovery-trial-3",
+        "diagnosis": {
+          "root_service": "inventory",
+          "cause": "Inventory worker is in a stopped state ('T') with no progress on completed requests, as indicated by metrics and traces. The trace shows an error message stating 'Worker process is stopped and makes no progress after a controlled runtime suspension.' This suggests the worker has halted execution despite being active in the system.",
+          "remediation_type": "online_op",
+          "confidence": 0.95,
+          "evidence_ids": [
+            "e1",
+            "e2"
+          ],
+          "action": {
+            "operation": "restart",
+            "deployment": "inventory"
+          }
+        },
+        "route": "auto_remediated",
+        "fix": null,
+        "errors": [],
+        "paid_api_calls": 0,
+        "recovery": {
+          "recovered": true,
+          "checks": 2,
+          "last_check": {
+            "attempt": 2,
+            "rollout_ready": true,
+            "health_status": 200,
+            "deployment": {
+              "metadata.generation": 15,
+              "status.observedGeneration": 15,
+              "spec.replicas": 1,
+              "status.replicas": 1,
+              "status.updatedReplicas": 1,
+              "status.readyReplicas": 1,
+              "status.availableReplicas": 1
+            }
+          },
+          "elapsed_seconds": 1.162
+        },
+        "duration_seconds": 11.256,
+        "trace_path": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\recovery-trials\\20261025T062515\\runs\\1fb7bd179a85431990e9e684031ba671\\trace.jsonl"
+      },
+      "alert_to_health_verified_seconds": 11.239,
+      "observed_seconds": 13.876,
+      "worker_progress_restored": true,
+      "health_status": 200,
+      "pod_replaced": true,
+      "trace_artifact": "results/recovery_trial_3_20261025.jsonl",
+      "trace_sha256": "91d39505d7a36d67095ff7367cacf380d360fefcb617687dc5d2081edd9f52c1"
+    },
+    {
+      "id": "trial-4",
+      "expect_recovered": false,
+      "injected_mode": "always",
+      "cold_model": false,
+      "result": {
+        "run_id": "f6681b4ca73f41b09da736e370762650",
+        "alert_id": "recovery-trial-4",
+        "diagnosis": {
+          "root_service": "inventory",
+          "cause": "Inventory worker is in a stopped state ('T') with no progress made, as indicated by the metrics showing zero completed requests and traces showing an error message about the worker process halting after suspension.",
+          "remediation_type": "online_op",
+          "confidence": 0.95,
+          "evidence_ids": [
+            "e1",
+            "e2"
+          ],
+          "action": {
+            "operation": "restart",
+            "deployment": "inventory"
+          }
+        },
+        "route": "needs_review",
+        "fix": null,
+        "errors": [],
+        "paid_api_calls": 0,
+        "recovery": {
+          "recovered": false,
+          "checks": 28,
+          "last_check": {
+            "attempt": 28,
+            "rollout_ready": true,
+            "health_status": 503,
+            "deployment": {
+              "metadata.generation": 17,
+              "status.observedGeneration": 17,
+              "spec.replicas": 1,
+              "status.replicas": 1,
+              "status.updatedReplicas": 1,
+              "status.readyReplicas": 1,
+              "status.availableReplicas": 1
+            }
+          },
+          "elapsed_seconds": 30.003,
+          "reason": "Deployment readiness and HTTP 200 health were not both confirmed before the deadline"
+        },
+        "review": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\recovery-trials\\20261025T062515\\reviews\\1b014547286a425f8274d34b325c0e67.json",
+        "duration_seconds": 38.368,
+        "trace_path": "C:\\Users\\sunny\\Desktop\\末世计划\\projects\\AIops-agent\\.storage\\recovery-trials\\20261025T062515\\runs\\f6681b4ca73f41b09da736e370762650\\trace.jsonl"
+      },
+      "alert_to_health_verified_seconds": null,
+      "observed_seconds": 39.464,
+      "worker_progress_restored": false,
+      "health_status": 503,
+      "pod_replaced": true,
+      "trace_artifact": "results/recovery_trial_4_20261025.jsonl",
+      "trace_sha256": "9d80533f2c4cb31662e081410ed48ae0fd0a9cd14251bb2f3f4e986d09e5a274"
+    }
+  ],
+  "summary": {
+    "trials": 4,
+    "expected_recoverable_trials": 3,
+    "verified_recoveries": 3,
+    "unrecovered_observations": [
+      {
+        "trial": "trial-4",
+        "observation_seconds": 39.464,
+        "route": "needs_review",
+        "health_status": 503
+      }
+    ],
+    "unexpected_outcome_trials": [],
+    "successful_intervals_seconds": [
+      20.979,
+      11.638,
+      11.239
+    ],
+    "successful_mean_seconds": 14.618666666666666,
+    "successful_median_seconds": 11.638,
+    "successful_min_seconds": 11.239,
+    "successful_max_seconds": 20.979,
+    "definitions": "Alert trace start to readiness + HTTP 200 success event; worker progress and Pod replacement confirmed independently. Unrecovered observations are reported separately, never as zero or successful recovery times."
+  },
+  "workflow_sha256": "eed2fc6e82f2414527d53afc940185780355635b478136b22e5fa7761d9b4ae8",
+  "paid_api_calls": 0,
+  "scope": "New controlled fault injections, not original historical outages"
+}

@@ -1,0 +1,62 @@
+{
+  "measured_at_utc": "2026-10-25T06:30:58.289430+00:00",
+  "classification": {
+    "scenarios": 13,
+    "runs": 23,
+    "service_label": {
+      "correct": 23,
+      "total": 23,
+      "accuracy": 1.0
+    },
+    "disposition_label": {
+      "correct": 23,
+      "total": 23,
+      "accuracy": 1.0
+    },
+    "final_route": {
+      "correct": 23,
+      "total": 23,
+      "accuracy": 1.0
+    },
+    "known_service_localization": {
+      "correct": 20,
+      "total": 20,
+      "accuracy": 1.0
+    },
+    "definitions": "Exact expected service/type/route labels. Service labels include unknown; no semantic grading of root-cause prose."
+  },
+  "controlled_recovery": {
+    "trials": 4,
+    "expected_recoverable_trials": 3,
+    "verified_recoveries": 3,
+    "unrecovered_observations": [
+      {
+        "trial": "trial-4",
+        "observation_seconds": 39.464,
+        "route": "needs_review",
+        "health_status": 503
+      }
+    ],
+    "unexpected_outcome_trials": [],
+    "successful_intervals_seconds": [
+      20.979,
+      11.638,
+      11.239
+    ],
+    "successful_mean_seconds": 14.618666666666666,
+    "successful_median_seconds": 11.638,
+    "successful_min_seconds": 11.239,
+    "successful_max_seconds": 20.979,
+    "definitions": "Alert trace start to readiness + HTTP 200 success event; worker progress and Pod replacement confirmed independently. Unrecovered observations are reported separately, never as zero or successful recovery times."
+  },
+  "sources": {
+    "results/regression_20261024.json": "a2c0b8d002332a64dc44b79a7148db13c2409a986f8417c6c9512c579865ea3e",
+    "results/recovery_trials_20261025.json": "3b7314983ac6217c63166b72bc642e10aa150f715e2f8706ee9a12fecae0b16d"
+  },
+  "scope": "New synthetic functional regression labels and real single-node controlled K3s trials. They have separate denominators.",
+  "limitations": [
+    "Exact-label accuracy is not arbitrary root-cause correctness on production incidents.",
+    "Successful controlled recovery intervals are not production MTTR; failed observations stay visible.",
+    "Small repeated cases share a model, cluster and incident memory; no human 30–60 minute comparison."
+  ]
+}
